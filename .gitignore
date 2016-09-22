@@ -1,0 +1,9 @@
+builds/
+.idea/
+psd/
+node_modules/
+PNG/
+PSD/
+.zip
+.psd
+npm-debug.log
