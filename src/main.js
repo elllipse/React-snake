@@ -19,8 +19,6 @@ for (var r = 1; r <= rows; r++) {
     allSquares.push(row);
 }
 
-console.log(allSquares);
-
 var Field = React.createClass({
     getInitialState: function(){
       return {
@@ -31,6 +29,7 @@ var Field = React.createClass({
       }
     },
     componentWillMount: function(){
+        this.applePlace();
         document.addEventListener('keydown', (ev)=>{
             let currKey;
             let LastDir = this.state.direction;
@@ -64,13 +63,15 @@ var Field = React.createClass({
 
         })
     },
-
     moveSnake: function(direction) {
-        console.log('move to ' + direction);
-        let snakeFirstElem = this.state.snake[0];
+        let snake = this.state.snake;
+        let snakeFirstElem = snake[0];
+        let snakeLastElem = snake[snake.length-1];
+        console.log(snakeLastElem);
+        let squares = this.state.squares;
         let newFirstElem;
-        let newSnake = this.state.snake;
-        let contain, row;
+        let newSnake = snake;
+        let containInRow, row, cell, appleId, newSquares, snakeLastElemEating;
 
         switch (direction) {
             case 'left':
@@ -91,7 +92,8 @@ var Field = React.createClass({
         }
 
 
-        row = this.state.squares[+newFirstElem[0]-1]
+        row = squares[+newFirstElem[0]-1];
+
         if (!row) {
             clearInterval(this.moveSnakeTimer);
             alert('game over!');
@@ -99,19 +101,19 @@ var Field = React.createClass({
         }
         row.map((el)=>{
             if (el.id == newFirstElem) {
-                contain  = true;
+                containInRow  = true;
             }
-            if (el.isFeed == true ) {
-                console.log('+1 elem to snake');
+            if (el.isApple) {
+                appleId = el.id;
             }
         });
 
-        if (!contain) {
+        if (!containInRow) {
             clearInterval(this.moveSnakeTimer);
             alert('game over!');
             return
 
-        };
+        }
 
         if (snake.indexOf(newFirstElem) > -1) {
             clearInterval(this.moveSnakeTimer);
@@ -119,13 +121,55 @@ var Field = React.createClass({
             return
         }
 
+        if (newFirstElem == appleId) {
+            squares[newFirstElem[0] - 1][newFirstElem[1] - 1].appleEated = true;
+            this.applePlace();
+        }
+
         newSnake.pop();
         newSnake.unshift(newFirstElem);
 
+        snakeLastElemEating = squares[snakeLastElem[0]-1][snakeLastElem[1]-1];
+        if (snakeLastElemEating.appleEated) {
+            snakeLastElemEating.appleEated = false;
+            newSnake.push('55') // CHANGE THIS TO CORRECT VALUE
+        }
+
         this.setState({
             direction: direction,
-            snake: newSnake
+            snake: newSnake,
+            squares: squares
         })
+    },
+    applePlace: function() {
+        var self = this;
+        var row,cell, newSquares;
+        function randomCoords() {
+            let randomRow = Math.ceil(Math.random() * rows);
+            let randomCell = Math.ceil(Math.random() * cells);
+
+
+
+            let coords = '' + randomRow + randomCell;
+            if (snake.indexOf(coords) > -1) {
+                randomCoords();
+            } else {
+                row = +coords[0] - 1;
+                cell = +coords[1] - 1;
+
+                newSquares = self.state.squares;
+                if (self.lastApplePos) {
+                    newSquares[self.lastApplePos[0]-1][self.lastApplePos[1]-1].isApple = false;
+                }
+                newSquares[row][cell].isApple = true;
+                self.lastApplePos = newSquares[row][cell].id;
+
+                self.setState({
+                    squares: newSquares
+                })
+            }
+        }
+        randomCoords();
     },
     render: function() {
         return (
@@ -153,10 +197,12 @@ var Row = React.createClass({
 var Square = React.createClass({
     render: function() {
 
-
-
         let style = {};
         let snakeIndex = this.props.snake.indexOf(this.props.square.id);
+        let isApple = this.props.square.isApple;
+        let appleEated = this.props.square.appleEated;
+
+        if (isApple) style.backgroundColor = 'green';
 
         if (snakeIndex > -1) {
             if (snakeIndex == 0) {
@@ -164,6 +210,8 @@ var Square = React.createClass({
             } else {
                 style.backgroundColor = '#000';
             }
+
+            if (appleEated) style.transform = 'scale(1.3)';
         }
 
         return (
