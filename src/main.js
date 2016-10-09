@@ -3,21 +3,22 @@ var ReactDOM = require('react-dom');
 
 require('./css/main.css');
 
-var rows = 8;
-var cells = 8;
+var rows = 34;
+var cells = 34;
 var allSquares = [];
 
-var snake = ['44','45','46', '47', '48', '58', '68']
+var snake = ['11-13', '11-14', '11-15', '11-16', '11-17', '11-18'];
 
 for (var r = 1; r <= rows; r++) {
     let row = [];
     for (var c = 1; c <= cells; c++) {
         row.push({
-            id: ''+r+c,
+            id: `${r}-${c}`,
         })
     }
     allSquares.push(row);
 }
+
 
 var Field = React.createClass({
     getInitialState: function(){
@@ -25,8 +26,12 @@ var Field = React.createClass({
           squares: allSquares,
           snake: snake,
           direction: 'left',
-          interval: 500
+          interval: 80
       }
+    },
+    componentDidMount: function() {
+        var field = document.querySelector('.field');
+        field.style.width = cells * 10 + 'px';
     },
     componentWillMount: function(){
         this.applePlace();
@@ -66,73 +71,85 @@ var Field = React.createClass({
     moveSnake: function(direction) {
         let snake = this.state.snake;
         let snakeFirstElem = snake[0];
+        let snakeFirstElemRow = snakeFirstElem.split('-')[0];
+        let snakeFirstElemCell = snakeFirstElem.split('-')[1];
         let snakeLastElem = snake[snake.length-1];
-        console.log(snakeLastElem);
         let squares = this.state.squares;
         let newFirstElem;
         let newSnake = snake;
         let containInRow, row, cell, appleId, newSquares, snakeLastElemEating;
 
+
         switch (direction) {
             case 'left':
-                newFirstElem = snakeFirstElem - 1 + '';
+                newFirstElem = snakeFirstElemRow + '-' + (+snakeFirstElemCell - 1);
                 break;
 
             case 'right':
-                newFirstElem = +snakeFirstElem + 1 + '';
+                newFirstElem = snakeFirstElemRow + '-' + (+snakeFirstElemCell + 1);
                 break;
 
             case 'top':
-                newFirstElem = +snakeFirstElem - 10 + '';
+                snakeFirstElemRow = +snakeFirstElemRow - 1;
+                newFirstElem = snakeFirstElemRow + '-' + snakeFirstElemCell;
                 break;
 
             case 'bottom':
-                newFirstElem = +snakeFirstElem + 10 + '';
+                snakeFirstElemRow = +snakeFirstElemRow + 1;
+                newFirstElem = snakeFirstElemRow + '-' + snakeFirstElemCell;
                 break;
         }
 
 
-        row = squares[+newFirstElem[0]-1];
+        row = squares[+snakeFirstElemRow-1];
 
         if (!row) {
             clearInterval(this.moveSnakeTimer);
-            alert('game over!');
+            console.log('game over!');
             return
         }
-        row.map((el)=>{
-            if (el.id == newFirstElem) {
+
+        row.map((cell)=>{
+
+            if (cell.id == newFirstElem) {
                 containInRow  = true;
             }
-            if (el.isApple) {
-                appleId = el.id;
+            if (cell.isApple) {
+                appleId = cell.id;
             }
         });
 
         if (!containInRow) {
             clearInterval(this.moveSnakeTimer);
-            alert('game over!');
+            console.log('game over!');
             return
 
         }
 
         if (snake.indexOf(newFirstElem) > -1) {
             clearInterval(this.moveSnakeTimer);
-            alert('game over!');
+            console.log('game over!');
             return
         }
 
         if (newFirstElem == appleId) {
-            squares[newFirstElem[0] - 1][newFirstElem[1] - 1].appleEated = true;
+            squares[+snakeFirstElemRow-1][+snakeFirstElemCell - 1].appleEated = true;
             this.applePlace();
         }
 
         newSnake.pop();
         newSnake.unshift(newFirstElem);
 
-        snakeLastElemEating = squares[snakeLastElem[0]-1][snakeLastElem[1]-1];
+        if (this.addEatedElem) {
+            newSnake.push(this.addEatedElem);
+            this.addEatedElem = null;
+        }
+
+        snakeLastElemEating = squares[+snakeFirstElemRow-1][+snakeFirstElemCell-1];
         if (snakeLastElemEating.appleEated) {
             snakeLastElemEating.appleEated = false;
-            newSnake.push('55') // CHANGE THIS TO CORRECT VALUE
+            this.addEatedElem = newSnake[newSnake.length-1];
+            //newSnake.push((+newSnake[newSnake.length-1] + 1) + '') // CHANGE THIS TO CORRECT VALUE
         }
 
         this.setState({
@@ -145,21 +162,23 @@ var Field = React.createClass({
         var self = this;
         var row,cell, newSquares;
         function randomCoords() {
-            let randomRow = Math.ceil(Math.random() * rows);
-            let randomCell = Math.ceil(Math.random() * cells);
+            let randomRow = Math.floor(Math.random() * rows);
+            let randomCell = Math.floor(Math.random() * cells);
 
-
-
-            let coords = '' + randomRow + randomCell;
+            let coords = randomRow + '-' + randomCell;
             if (snake.indexOf(coords) > -1) {
                 randomCoords();
             } else {
-                row = +coords[0] - 1;
-                cell = +coords[1] - 1;
+                row = randomRow;
+                cell = randomCell;
 
                 newSquares = self.state.squares;
+                //console.log(` apple will render at row ${row} and cell ${cell}`);
                 if (self.lastApplePos) {
-                    newSquares[self.lastApplePos[0]-1][self.lastApplePos[1]-1].isApple = false;
+                    let pos = self.lastApplePos.split('-');
+                    let row = +pos[0] - 1;
+                    let cell = +pos[1] - 1;
+                    newSquares[row][cell].isApple = false;
                 }
                 newSquares[row][cell].isApple = true;
                 self.lastApplePos = newSquares[row][cell].id;
@@ -183,6 +202,22 @@ var Field = React.createClass({
 });
 
 var Row = React.createClass({
+/*    shouldComponentUpdate: function() {
+        let snake = this.props.snake;
+        let row =[];
+        for (var el in this.props.row) {
+            row.push(el.id);
+        };
+        let rowContainSnake = snake.some((el) => {
+            return row.indexOf(el.id) > -1;
+        });
+
+        if (rowContainSnake) {
+            return true;
+        } else {
+            return false;
+        }
+    },*/
     render: function() {
         return (
             <div className='row'>
